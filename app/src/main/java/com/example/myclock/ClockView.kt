@@ -77,8 +77,6 @@ class ClockView @JvmOverloads constructor(
         secondTimer = Timer()
         secondTimerTask = object : TimerTask() {
             override fun run() {
-                //Log.d("ClockView", "Starting ${System.currentTimeMillis()}")
-//                Log.d("ClockView", "time is ${secondHand}")
                 secondHand++
                 if (secondHand == 60) {
                     secondHand = 0
@@ -92,7 +90,6 @@ class ClockView @JvmOverloads constructor(
                     }
                 }
                 postInvalidate()
-                //Log.d("ClockView", "ending ${System.currentTimeMillis()}")
             }
         }
 
@@ -129,51 +126,16 @@ class ClockView @JvmOverloads constructor(
 
         hourHand = c.get(Calendar.HOUR)
 
-        /*if (secondHand == 60) {//case 59 second
-            secondHand = 0
-            if (minuteHand == 59) {//case 59 minute 59 seconds
-                minuteHand = 0
-                if (hourHand == 11) {// case 11 hour 58 minute 59 second
-                    hourHand = 0
-                }
-            }
-        }*/
-
         secondTimer.scheduleAtFixedRate(
             secondTimerTask,
             1000 - c.get(Calendar.MILLISECOND).toLong(),
             1000
         )
 
-        /*Log.d("ClockView", "$secondHand, ${c.get(Calendar.MILLISECOND)}")
-        Log.d("ClockView", "delay =  ${1000 - c.get(Calendar.MILLISECOND)}")*/
-
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-
-        //Log.d("ClockView", "time is ${secondHand}")
-
-        /*canvas.drawCircle(width / 2f, height / 2f, radius, paint)
-
-        val labelRadius = radius + TEXT_OFFSET
-
-        for (i in 0..11) {
-
-            val x = (cos((i * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * labelRadius) + width / 2f
-            val y = (sin((i * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * labelRadius) + height / 2f
-
-            canvas.drawTextCentred(
-                numbers[i],
-                x,
-                y,
-                textPaint
-            )
-        }
-
-        canvas.drawCircle(width / 2f, height / 2f, labelRadius + 35, paint)*/
-        //Log.d("ClockView", "Starting ${System.currentTimeMillis()}")
 
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
 
@@ -206,9 +168,6 @@ class ClockView @JvmOverloads constructor(
             (sin((hourHand * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * hourRadius) + height / 2f
 
         canvas.drawLine(hourX, hourY, width / 2f, height / 2f, paint)
-
-        //Log.d("SecondHand", secondHand.toString())
-        //Log.d("ClockView", "ending ${System.currentTimeMillis()}")
 
     }
 
