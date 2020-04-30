@@ -7,12 +7,20 @@ import android.view.View
 import java.util.*
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 
-// Stroke width for the the paint.
-private const val STROKE_WIDTH = 12f
-private const val TEXT_OFFSET = 36
+// These ratios are relative to calculated radius
+private const val STROKE_WIDTH_RATIO = 0.052f
+private const val TEXT_SIZE_RATIO = 0.217f
+
+private const val OUTER_CIRCLE_RATIO = 1.31f
+private const val LABEL_RATIO = 1.16f
+
+private const val HOUR_RATIO = 0.53f
+private const val MINUTE_RATIO = 0.69f
+private const val SECOND_RATIO = 0.84f
 
 class ClockView @JvmOverloads constructor(
     context: Context,
@@ -33,7 +41,7 @@ class ClockView @JvmOverloads constructor(
         style = Paint.Style.STROKE // default: FILL
         strokeJoin = Paint.Join.ROUND // default: MITER
         strokeCap = Paint.Cap.ROUND // default: BUTT
-        strokeWidth = STROKE_WIDTH // default: Hairline-width (really thin)
+        //strokeWidth = STROKE_WIDTH // default: Hairline-width (really thin)
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -42,7 +50,7 @@ class ClockView @JvmOverloads constructor(
         // for every screen refresh.
         style = Paint.Style.FILL
         //textAlign = Paint.Align.CENTER
-        textSize = 50.0f
+        //textSize = 50.0f
         typeface = Typeface.create("", Typeface.BOLD)
     }
 
@@ -58,6 +66,10 @@ class ClockView @JvmOverloads constructor(
     private var minuteHand = 0
     private var hourHand = 0
 
+    private var secondRadius = 0
+    private var minuteRadius = 0
+    private var hourRadius = 0
+
     init {
         numbers.add("12")
         for (i in 1..11) {
@@ -68,6 +80,12 @@ class ClockView @JvmOverloads constructor(
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         // Calculate the radius from the smaller of the width and height.
         radius = (min(width, height) / 2f) * 0.7f
+
+        initializeRadii()
+
+        textPaint.textSize = radius * TEXT_SIZE_RATIO
+
+        paint.strokeWidth = radius * STROKE_WIDTH_RATIO
 
         if (::secondTimerTask.isInitialized) {
             secondTimerTask.cancel()
@@ -97,9 +115,33 @@ class ClockView @JvmOverloads constructor(
         extraBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         extraCanvas = Canvas(extraBitmap)
 
+        val tempPaint = Paint().apply {
+            color = Color.parseColor("#000000")
+            // Smooths out edges of what is drawn without affecting shape.
+            isAntiAlias = true
+            // Dithering affects how colors with higher-precision than the device are down-sampled.
+            isDither = true
+            style = Paint.Style.STROKE // default: FILL
+            strokeJoin = Paint.Join.ROUND // default: MITER
+            strokeCap = Paint.Cap.BUTT // default: BUTT
+            strokeWidth = paint.strokeWidth * 0.4f // default: Hairline-width (really thin)
+        }
+
+        val dashEndX = (radius * OUTER_CIRCLE_RATIO) + (width / 2)
+        val dashStartX = dashEndX - 25f //todo change this hardcoded gap
+
+        for (i in 0..59) {
+            if (i % 5 != 0) {
+                extraCanvas.save()
+                extraCanvas.rotate(i * 6f, width / 2f, height / 2f)
+                extraCanvas.drawLine(dashStartX, height / 2f, dashEndX, height / 2f, tempPaint)
+                extraCanvas.restore()
+            }
+        }
+
         extraCanvas.drawCircle(width / 2f, height / 2f, radius, paint)
 
-        val labelRadius = radius + TEXT_OFFSET
+        val labelRadius = radius * LABEL_RATIO
 
         for (i in 0..11) {
 
@@ -114,8 +156,7 @@ class ClockView @JvmOverloads constructor(
             )
         }
 
-        extraCanvas.drawCircle(width / 2f, height / 2f, labelRadius + 35, paint)
-
+        extraCanvas.drawCircle(width / 2f, height / 2f, radius * OUTER_CIRCLE_RATIO, paint)
 
         val c = Calendar.getInstance()
         c.timeInMillis = System.currentTimeMillis()
@@ -134,12 +175,16 @@ class ClockView @JvmOverloads constructor(
 
     }
 
+    private fun initializeRadii() {
+        secondRadius = (radius * SECOND_RATIO).roundToInt()
+        minuteRadius = (radius * MINUTE_RATIO).roundToInt()
+        hourRadius = (radius * HOUR_RATIO).roundToInt()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
-
-        val secondRadius = radius - TEXT_OFFSET
 
         val secondX =
             (cos((secondHand * (Math.PI / 30)) - (Math.PI / 2)).toFloat() * secondRadius) + width / 2f
@@ -149,7 +194,6 @@ class ClockView @JvmOverloads constructor(
 
         canvas.drawLine(secondX, secondY, width / 2f, height / 2f, paint)
 
-        val minuteRadius = secondRadius - TEXT_OFFSET
 
         val minuteX =
             (cos((minuteHand * (Math.PI / 30)) - (Math.PI / 2)).toFloat() * minuteRadius) + width / 2f
@@ -159,7 +203,6 @@ class ClockView @JvmOverloads constructor(
 
         canvas.drawLine(minuteX, minuteY, width / 2f, height / 2f, paint)
 
-        val hourRadius = minuteRadius - TEXT_OFFSET
 
         val hourX =
             (cos((hourHand * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * hourRadius) + width / 2f
