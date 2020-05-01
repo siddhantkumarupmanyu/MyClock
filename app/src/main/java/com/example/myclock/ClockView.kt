@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
+import androidx.core.graphics.withRotation
 import java.util.*
 import kotlin.math.cos
 import kotlin.math.min
@@ -66,9 +67,12 @@ class ClockView @JvmOverloads constructor(
     private var minuteHand = 0
     private var hourHand = 0
 
-    private var secondRadius = 0
-    private var minuteRadius = 0
-    private var hourRadius = 0
+    private var secondX = 0f
+    private var minuteX = 0f
+    private var hourX = 0f
+
+    private var halfWidth = 0f
+    private var halfHeight = 0f
 
     init {
         numbers.add("12")
@@ -81,7 +85,7 @@ class ClockView @JvmOverloads constructor(
         // Calculate the radius from the smaller of the width and height.
         radius = (min(width, height) / 2f) * 0.7f
 
-        initializeRadii()
+        initializeX(width, height)
 
         textPaint.textSize = radius * TEXT_SIZE_RATIO
 
@@ -175,42 +179,41 @@ class ClockView @JvmOverloads constructor(
 
     }
 
-    private fun initializeRadii() {
-        secondRadius = (radius * SECOND_RATIO).roundToInt()
-        minuteRadius = (radius * MINUTE_RATIO).roundToInt()
-        hourRadius = (radius * HOUR_RATIO).roundToInt()
+    private fun initializeX(width: Int, height: Int) {
+        val secondRadius = (radius * SECOND_RATIO).roundToInt()
+        val minuteRadius = (radius * MINUTE_RATIO).roundToInt()
+        val hourRadius = (radius * HOUR_RATIO).roundToInt()
+
+        halfWidth = (width / 2f).roundToInt().toFloat()
+        halfHeight = (height / 2f).roundToInt().toFloat()
+
+        secondX = secondRadius + halfWidth
+        minuteX = minuteRadius + halfWidth
+        hourX = hourRadius + halfWidth
+
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+//        Log.d("ClockView", "Starting Time = ${System.currentTimeMillis()}")
+
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
 
-        val secondX =
-            (cos((secondHand * (Math.PI / 30)) - (Math.PI / 2)).toFloat() * secondRadius) + width / 2f
+        canvas.withRotation((secondHand * 6f) - 90f, halfWidth, halfHeight) {
+            canvas.drawLine(secondX, halfHeight, halfWidth, halfHeight, paint)
+        }
 
-        val secondY =
-            (sin((secondHand * (Math.PI / 30)) - (Math.PI / 2)).toFloat() * secondRadius) + height / 2f
+        canvas.withRotation((minuteHand * 6f) - 90f, halfWidth, halfHeight) {
+            canvas.drawLine(minuteX, halfHeight, halfWidth, halfHeight, paint)
+        }
 
-        canvas.drawLine(secondX, secondY, width / 2f, height / 2f, paint)
+        canvas.withRotation((hourHand * 30f) - 90f, halfWidth, halfHeight) {
+            canvas.drawLine(hourX, halfHeight, halfWidth, halfHeight, paint)
+        }
 
+//        Log.d("ClockView", "Ending Time = ${System.currentTimeMillis()}")
 
-        val minuteX =
-            (cos((minuteHand * (Math.PI / 30)) - (Math.PI / 2)).toFloat() * minuteRadius) + width / 2f
-
-        val minuteY =
-            (sin((minuteHand * (Math.PI / 30)) - (Math.PI / 2)).toFloat() * minuteRadius) + height / 2f
-
-        canvas.drawLine(minuteX, minuteY, width / 2f, height / 2f, paint)
-
-
-        val hourX =
-            (cos((hourHand * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * hourRadius) + width / 2f
-
-        val hourY =
-            (sin((hourHand * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * hourRadius) + height / 2f
-
-        canvas.drawLine(hourX, hourY, width / 2f, height / 2f, paint)
 
     }
 
