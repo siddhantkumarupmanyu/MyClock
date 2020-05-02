@@ -6,10 +6,8 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.core.graphics.withRotation
 import java.util.*
-import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 
 // These ratios are relative to calculated radius
@@ -17,11 +15,11 @@ private const val STROKE_WIDTH_RATIO = 0.052f
 private const val TEXT_SIZE_RATIO = 0.217f
 
 private const val OUTER_CIRCLE_RATIO = 1.31f
-private const val LABEL_RATIO = 1.16f
+private const val LABEL_RATIO = 1.14f
 
-private const val HOUR_RATIO = 0.53f
-private const val MINUTE_RATIO = 0.69f
-private const val SECOND_RATIO = 0.84f
+private const val HOUR_RATIO = 0.9f
+private const val MINUTE_RATIO = 1.05f
+private const val SECOND_RATIO = 1.1f
 
 class ClockView @JvmOverloads constructor(
     context: Context,
@@ -33,7 +31,7 @@ class ClockView @JvmOverloads constructor(
     private var radius = 0.0f
 
     // Set up the paint with which to draw.
-    private val paint = Paint().apply {
+    /*private val paint = Paint().apply {
         color = Color.parseColor("#FF0000")
         // Smooths out edges of what is drawn without affecting shape.
         isAntiAlias = true
@@ -43,16 +41,33 @@ class ClockView @JvmOverloads constructor(
         strokeJoin = Paint.Join.ROUND // default: MITER
         strokeCap = Paint.Cap.ROUND // default: BUTT
         //strokeWidth = STROKE_WIDTH // default: Hairline-width (really thin)
+    }*/
+    private val paint = Paint().apply {
+        color = Color.WHITE
+        // Smooths out edges of what is drawn without affecting shape.
+        isAntiAlias = true
+        // Dithering affects how colors with higher-precision than the device are down-sampled.
+        isDither = true
+        style = Paint.Style.FILL // default: FILL
+        strokeJoin = Paint.Join.ROUND // default: MITER
+        strokeCap = Paint.Cap.BUTT // default: BUTT
     }
 
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        // Paint styles used for rendering are initialized here. This
-        // is a performance optimization, since onDraw() is called
-        // for every screen refresh.
+    private val secondPaint = Paint().apply {
+        color = Color.RED
+        // Smooths out edges of what is drawn without affecting shape.
+        isAntiAlias = true
+        // Dithering affects how colors with higher-precision than the device are down-sampled.
+        isDither = true
+        style = Paint.Style.STROKE // default: FILL
+        strokeCap = Paint.Cap.BUTT // default: BUTT
+        strokeWidth = 6f
+    }
+
+    private val smallCircle = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        isAntiAlias = true
+        isDither = true
         style = Paint.Style.FILL
-        //textAlign = Paint.Align.CENTER
-        //textSize = 50.0f
-        typeface = Typeface.create("", Typeface.BOLD)
     }
 
     private lateinit var extraCanvas: Canvas
@@ -68,8 +83,8 @@ class ClockView @JvmOverloads constructor(
     private var hourHand = 0
 
     private var secondX = 0f
-    private var minuteX = 0f
-    private var hourX = 0f
+    private var minutePath = Path()
+    private var hourPath = Path()
 
     private var halfWidth = 0f
     private var halfHeight = 0f
@@ -86,8 +101,6 @@ class ClockView @JvmOverloads constructor(
         radius = (min(width, height) / 2f) * 0.7f
 
         initializeX(width, height)
-
-        textPaint.textSize = radius * TEXT_SIZE_RATIO
 
         paint.strokeWidth = radius * STROKE_WIDTH_RATIO
 
@@ -119,8 +132,21 @@ class ClockView @JvmOverloads constructor(
         extraBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         extraCanvas = Canvas(extraBitmap)
 
+        extraCanvas.drawColor(Color.BLACK)
+
+        val outerPaint = Paint().apply {
+            color = Color.BLACK
+            // Smooths out edges of what is drawn without affecting shape.
+            isAntiAlias = true
+            // Dithering affects how colors with higher-precision than the device are down-sampled.
+            isDither = true
+            style = Paint.Style.FILL // default: FILL
+        }
+
+        extraCanvas.drawCircle(width / 2f, height / 2f, radius * OUTER_CIRCLE_RATIO, outerPaint)
+
         val tempPaint = Paint().apply {
-            color = Color.parseColor("#000000")
+            color = Color.WHITE
             // Smooths out edges of what is drawn without affecting shape.
             isAntiAlias = true
             // Dithering affects how colors with higher-precision than the device are down-sampled.
@@ -134,33 +160,48 @@ class ClockView @JvmOverloads constructor(
         val dashEndX = (radius * OUTER_CIRCLE_RATIO) + (width / 2)
         val dashStartX = dashEndX - 25f //todo change this hardcoded gap
 
-        for (i in 0..59) {
-            if (i % 5 != 0) {
-                extraCanvas.save()
-                extraCanvas.rotate(i * 6f, width / 2f, height / 2f)
-                extraCanvas.drawLine(dashStartX, height / 2f, dashEndX, height / 2f, tempPaint)
-                extraCanvas.restore()
-            }
-        }
-
-        extraCanvas.drawCircle(width / 2f, height / 2f, radius, paint)
-
         val labelRadius = radius * LABEL_RATIO
 
-        for (i in 0..11) {
+        for (i in 0..59) {
+            extraCanvas.save()
+            extraCanvas.rotate(i * 6f, width / 2f, height / 2f)
+            if (i % 5 != 0) {
+                extraCanvas.drawLine(dashStartX, height / 2f, dashEndX, height / 2f, tempPaint)
 
-            val x = (cos((i * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * labelRadius) + width / 2f
-            val y = (sin((i * (Math.PI / 6)) - (Math.PI / 2)).toFloat() * labelRadius) + height / 2f
+            } else {
+                if (i % 15 == 0) {
+                    tempPaint.strokeWidth = paint.strokeWidth
 
-            extraCanvas.drawTextCentred(
-                numbers[i],
-                x,
-                y,
-                textPaint
-            )
+                    extraCanvas.drawLine(
+                        dashEndX,
+                        height / 2f,
+                        halfWidth + labelRadius,
+                        height / 2f,
+                        tempPaint
+                    )
+
+                    tempPaint.strokeWidth = paint.strokeWidth * 0.4f
+
+                } else {
+                    tempPaint.strokeWidth = paint.strokeWidth * 0.7f
+
+                    extraCanvas.drawLine(
+                        dashStartX - 4f,
+                        height / 2f,
+                        dashEndX,
+                        height / 2f,
+                        tempPaint
+                    )
+
+                    tempPaint.strokeWidth = paint.strokeWidth * 0.4f
+                }
+            }
+            extraCanvas.restore()
         }
 
-        extraCanvas.drawCircle(width / 2f, height / 2f, radius * OUTER_CIRCLE_RATIO, paint)
+        smallCircle.strokeWidth = paint.strokeWidth * 0.7f
+
+        //extraCanvas.drawCircle(width / 2f, height / 2f, radius, paint)
 
         val c = Calendar.getInstance()
         c.timeInMillis = System.currentTimeMillis()
@@ -188,8 +229,21 @@ class ClockView @JvmOverloads constructor(
         halfHeight = (height / 2f).roundToInt().toFloat()
 
         secondX = secondRadius + halfWidth
-        minuteX = minuteRadius + halfWidth
-        hourX = hourRadius + halfWidth
+        //minutePath = minuteRadius + halfWidth
+//        hourPath = hourRadius + halfWidth
+
+        minutePath.moveTo(halfWidth - 55f, halfHeight - 8f)
+        minutePath.lineTo(minuteRadius + halfWidth, halfHeight - 4f)
+        minutePath.lineTo(minuteRadius + halfWidth, halfHeight + 4f)
+        minutePath.lineTo(halfWidth - 55f, halfHeight + 8f)
+        minutePath.lineTo(halfWidth - 55f, halfHeight - 8f)
+
+        hourPath.moveTo(halfWidth - 50f, halfWidth - 10f)
+        hourPath.lineTo(hourRadius + halfWidth, halfHeight - 6f)
+        hourPath.lineTo(hourRadius + halfWidth, halfHeight + 6f)
+        hourPath.lineTo(halfWidth - 50f, halfHeight + 10f)
+        hourPath.lineTo(halfWidth - 50f, halfHeight - 10f)
+
 
     }
 
@@ -200,17 +254,38 @@ class ClockView @JvmOverloads constructor(
 
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
 
-        canvas.withRotation((secondHand * 6f) - 90f, halfWidth, halfHeight) {
-            canvas.drawLine(secondX, halfHeight, halfWidth, halfHeight, paint)
-        }
 
         canvas.withRotation((minuteHand * 6f) - 90f, halfWidth, halfHeight) {
-            canvas.drawLine(minuteX, halfHeight, halfWidth, halfHeight, paint)
+            //canvas.drawLine(minutePath, halfHeight, halfWidth, halfHeight, paint)
+            canvas.drawPath(minutePath, paint)
         }
 
         canvas.withRotation((hourHand * 30f) - 90f, halfWidth, halfHeight) {
-            canvas.drawLine(hourX, halfHeight, halfWidth, halfHeight, paint)
+            canvas.drawPath(hourPath, paint)
         }
+
+        smallCircle.strokeWidth = 8.36f
+        smallCircle.color = Color.BLACK
+        smallCircle.style = Paint.Style.FILL
+        canvas.drawCircle(halfWidth, halfHeight, 15f, smallCircle)
+
+        smallCircle.color = Color.WHITE
+        smallCircle.style = Paint.Style.STROKE
+        canvas.drawCircle(halfWidth, halfHeight, 15f, smallCircle)
+
+        canvas.withRotation((secondHand * 6f) - 90f, halfWidth, halfHeight) {
+            canvas.drawLine(secondX, halfHeight, halfWidth - 60f, halfHeight, secondPaint)
+        }
+
+        smallCircle.strokeWidth = secondPaint.strokeWidth
+        smallCircle.color = Color.BLACK
+        smallCircle.style = Paint.Style.FILL
+        canvas.drawCircle(halfWidth, halfHeight, 15f - 8.36f, smallCircle)
+
+        smallCircle.color = Color.RED
+        smallCircle.style = Paint.Style.STROKE
+        canvas.drawCircle(halfWidth, halfHeight, 15f - 8.36f, smallCircle)
+
 
 //        Log.d("ClockView", "Ending Time = ${System.currentTimeMillis()}")
 
