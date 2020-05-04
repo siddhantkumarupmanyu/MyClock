@@ -10,16 +10,16 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 
+private const val TAG = "ClockView"
+
 // These ratios are relative to calculated radius
-private const val STROKE_WIDTH_RATIO = 0.052f
-private const val TEXT_SIZE_RATIO = 0.217f
+private const val STROKE_WIDTH_RATIO = 0.04f
 
-private const val OUTER_CIRCLE_RATIO = 1.31f
-private const val LABEL_RATIO = 1.14f
+private const val LABEL_RATIO = 0.87f
 
-private const val HOUR_RATIO = 0.9f
-private const val MINUTE_RATIO = 1.05f
-private const val SECOND_RATIO = 1.1f
+private const val HOUR_RATIO = 0.687f
+private const val MINUTE_RATIO = 0.801f
+private const val SECOND_RATIO = 0.839f
 
 class ClockView @JvmOverloads constructor(
     context: Context,
@@ -61,7 +61,6 @@ class ClockView @JvmOverloads constructor(
         isDither = true
         style = Paint.Style.STROKE // default: FILL
         strokeCap = Paint.Cap.BUTT // default: BUTT
-        strokeWidth = 6f
     }
 
     private val smallCircle = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -69,6 +68,8 @@ class ClockView @JvmOverloads constructor(
         isDither = true
         style = Paint.Style.FILL
     }
+
+    private var smallCircleStrokeWidth = 0f
 
     private lateinit var extraCanvas: Canvas
     private lateinit var extraBitmap: Bitmap
@@ -82,12 +83,15 @@ class ClockView @JvmOverloads constructor(
     private var minuteHand = 0
     private var hourHand = 0
 
-    private var secondX = 0f
+    private var secondPath = Path()
     private var minutePath = Path()
     private var hourPath = Path()
 
     private var halfWidth = 0f
     private var halfHeight = 0f
+
+    private var smallCircleRadius = 0f
+    private var differenceBTSmRadSmStroke = 0f
 
     init {
         numbers.add("12")
@@ -98,9 +102,9 @@ class ClockView @JvmOverloads constructor(
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         // Calculate the radius from the smaller of the width and height.
-        radius = (min(width, height) / 2f) * 0.7f
+        radius = (min(width, height) / 2f) * 0.917f
 
-        initializeX(width, height)
+        initializeHands(width, height)
 
         paint.strokeWidth = radius * STROKE_WIDTH_RATIO
 
@@ -134,16 +138,16 @@ class ClockView @JvmOverloads constructor(
 
         extraCanvas.drawColor(Color.BLACK)
 
-        val outerPaint = Paint().apply {
+        /*val outerPaint = Paint().apply {
             color = Color.BLACK
             // Smooths out edges of what is drawn without affecting shape.
             isAntiAlias = true
             // Dithering affects how colors with higher-precision than the device are down-sampled.
             isDither = true
             style = Paint.Style.FILL // default: FILL
-        }
+        }*/
 
-        extraCanvas.drawCircle(width / 2f, height / 2f, radius * OUTER_CIRCLE_RATIO, outerPaint)
+//        extraCanvas.drawCircle(width / 2f, height / 2f, radius * OUTER_CIRCLE_RATIO, outerPaint)
 
         val tempPaint = Paint().apply {
             color = Color.WHITE
@@ -157,8 +161,10 @@ class ClockView @JvmOverloads constructor(
             strokeWidth = paint.strokeWidth * 0.4f // default: Hairline-width (really thin)
         }
 
-        val dashEndX = (radius * OUTER_CIRCLE_RATIO) + (width / 2)
-        val dashStartX = dashEndX - 25f //todo change this hardcoded gap
+        val dashEndX = (radius) + (width / 2)
+        val dashStartX = dashEndX - (radius * 0.06649f)
+//        val dashStartX = dashEndX - 25f
+        val px4 = 0.0133f * radius
 
         val labelRadius = radius * LABEL_RATIO
 
@@ -186,7 +192,7 @@ class ClockView @JvmOverloads constructor(
                     tempPaint.strokeWidth = paint.strokeWidth * 0.7f
 
                     extraCanvas.drawLine(
-                        dashStartX - 4f,
+                        dashStartX - px4, // 4f
                         height / 2f,
                         dashEndX,
                         height / 2f,
@@ -220,7 +226,7 @@ class ClockView @JvmOverloads constructor(
 
     }
 
-    private fun initializeX(width: Int, height: Int) {
+    private fun initializeHands(width: Int, height: Int) {
         val secondRadius = (radius * SECOND_RATIO).roundToInt()
         val minuteRadius = (radius * MINUTE_RATIO).roundToInt()
         val hourRadius = (radius * HOUR_RATIO).roundToInt()
@@ -228,22 +234,54 @@ class ClockView @JvmOverloads constructor(
         halfWidth = (width / 2f).roundToInt().toFloat()
         halfHeight = (height / 2f).roundToInt().toFloat()
 
-        secondX = secondRadius + halfWidth
+
+        secondPath.moveTo(secondRadius + halfWidth, halfHeight)
+        secondPath.lineTo(halfWidth - (radius * 0.19948f), halfHeight)
+        //secondPath.lineTo(halfWidth - 60f, halfHeight)
+
         //minutePath = minuteRadius + halfWidth
 //        hourPath = hourRadius + halfWidth
 
-        minutePath.moveTo(halfWidth - 55f, halfHeight - 8f)
-        minutePath.lineTo(minuteRadius + halfWidth, halfHeight - 4f)
-        minutePath.lineTo(minuteRadius + halfWidth, halfHeight + 4f)
-        minutePath.lineTo(halfWidth - 55f, halfHeight + 8f)
-        minutePath.lineTo(halfWidth - 55f, halfHeight - 8f)
+        //Log.d(TAG, "radius = $radius")
 
-        hourPath.moveTo(halfWidth - 50f, halfWidth - 10f)
-        hourPath.lineTo(hourRadius + halfWidth, halfHeight - 6f)
-        hourPath.lineTo(hourRadius + halfWidth, halfHeight + 6f)
-        hourPath.lineTo(halfWidth - 50f, halfHeight + 10f)
-        hourPath.lineTo(halfWidth - 50f, halfHeight - 10f)
+        val minuteValues = floatArrayOf(0.183f * radius, 0.0265f * radius, 0.0133f * radius)
 
+        minutePath.moveTo(halfWidth - minuteValues[0], halfHeight - minuteValues[1])
+        //minutePath.moveTo(halfWidth - 55f, halfHeight - 8f)
+        minutePath.lineTo(minuteRadius + halfWidth, halfHeight - minuteValues[2])
+//        minutePath.lineTo(minuteRadius + halfWidth, halfHeight - 4f)
+        minutePath.lineTo(minuteRadius + halfWidth, halfHeight + minuteValues[2])
+//        minutePath.lineTo(minuteRadius + halfWidth, halfHeight + 4f)
+        minutePath.lineTo(halfWidth - minuteValues[0], halfHeight + minuteValues[1])
+//        minutePath.lineTo(halfWidth - 55f, halfHeight + 8f)
+        minutePath.lineTo(halfWidth - minuteValues[0], halfHeight - minuteValues[1])
+//        minutePath.lineTo(halfWidth - 55f, halfHeight - 8f)
+
+        val hourValues = floatArrayOf(radius * 0.1662f, radius * 0.03324f, radius * 0.019948f)
+        hourPath.moveTo(halfWidth - hourValues[0], halfWidth - hourValues[1])
+        hourPath.lineTo(hourRadius + halfWidth, halfHeight - hourValues[2])
+        hourPath.lineTo(hourRadius + halfWidth, halfHeight + hourValues[2])
+        hourPath.lineTo(halfWidth - hourValues[0], halfHeight + hourValues[1])
+        hourPath.lineTo(halfWidth - hourValues[0], halfHeight - hourValues[1])
+
+//        hourPath.moveTo(halfWidth - 50f, halfWidth - 10f)
+//        hourPath.lineTo(hourRadius + halfWidth, halfHeight - 6f)
+//        hourPath.lineTo(hourRadius + halfWidth, halfHeight + 6f)
+//        hourPath.lineTo(halfWidth - 50f, halfHeight + 10f)
+//        hourPath.lineTo(halfWidth - 50f, halfHeight - 10f)
+
+        //since secondPaint stroke width is also 6f
+
+        secondPaint.strokeWidth = hourValues[2]
+        //secondPaint.strokeWidth = 6f
+
+        smallCircleStrokeWidth = radius * 0.02779f
+        //smallCircleStrokeWidth = 8.36f
+
+        smallCircleRadius = radius * 0.04988f
+        //smallCircleRadius = 15f
+
+        differenceBTSmRadSmStroke = smallCircleRadius - smallCircleStrokeWidth
 
     }
 
@@ -254,37 +292,41 @@ class ClockView @JvmOverloads constructor(
 
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
 
+        canvas.withRotation((hourHand * 30f) - 90f, halfWidth, halfHeight) {
+            canvas.drawPath(hourPath, paint)
+        }
 
         canvas.withRotation((minuteHand * 6f) - 90f, halfWidth, halfHeight) {
             //canvas.drawLine(minutePath, halfHeight, halfWidth, halfHeight, paint)
             canvas.drawPath(minutePath, paint)
         }
 
-        canvas.withRotation((hourHand * 30f) - 90f, halfWidth, halfHeight) {
-            canvas.drawPath(hourPath, paint)
-        }
-
-        smallCircle.strokeWidth = 8.36f
+        smallCircle.strokeWidth = smallCircleStrokeWidth
         smallCircle.color = Color.BLACK
         smallCircle.style = Paint.Style.FILL
-        canvas.drawCircle(halfWidth, halfHeight, 15f, smallCircle)
+        canvas.drawCircle(halfWidth, halfHeight, smallCircleRadius, smallCircle)
 
         smallCircle.color = Color.WHITE
         smallCircle.style = Paint.Style.STROKE
-        canvas.drawCircle(halfWidth, halfHeight, 15f, smallCircle)
+        canvas.drawCircle(halfWidth, halfHeight, smallCircleRadius, smallCircle)
 
         canvas.withRotation((secondHand * 6f) - 90f, halfWidth, halfHeight) {
-            canvas.drawLine(secondX, halfHeight, halfWidth - 60f, halfHeight, secondPaint)
+            canvas.drawPath(secondPath, secondPaint)
         }
 
         smallCircle.strokeWidth = secondPaint.strokeWidth
         smallCircle.color = Color.BLACK
         smallCircle.style = Paint.Style.FILL
-        canvas.drawCircle(halfWidth, halfHeight, 15f - 8.36f, smallCircle)
+        canvas.drawCircle(
+            halfWidth,
+            halfHeight,
+            differenceBTSmRadSmStroke,
+            smallCircle
+        )
 
         smallCircle.color = Color.RED
         smallCircle.style = Paint.Style.STROKE
-        canvas.drawCircle(halfWidth, halfHeight, 15f - 8.36f, smallCircle)
+        canvas.drawCircle(halfWidth, halfHeight, differenceBTSmRadSmStroke, smallCircle)
 
 
 //        Log.d("ClockView", "Ending Time = ${System.currentTimeMillis()}")
