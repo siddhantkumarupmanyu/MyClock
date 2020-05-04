@@ -8,8 +8,8 @@
     tools:context=".MainActivity">
 
     <com.example.myclock.ClockView
-        android:layout_width="250dp"
-        android:layout_height="250dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         app:clock_background_color="@android:color/white"
         app:clock_hour_color="@android:color/black"
         app:clock_lines_color="@android:color/black"

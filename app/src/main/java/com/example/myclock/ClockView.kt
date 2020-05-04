@@ -7,6 +7,7 @@ import android.view.View
 import androidx.core.content.withStyledAttributes
 import androidx.core.graphics.withRotation
 import java.util.*
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -145,7 +146,7 @@ class ClockView @JvmOverloads constructor(
 //        minutePath.lineTo(halfWidth - 55f, halfHeight - 8f)
 
         val hourValues = floatArrayOf(radius * 0.1662f, radius * 0.03324f, radius * 0.019948f)
-        hourPath.moveTo(halfWidth - hourValues[0], halfWidth - hourValues[1])
+        hourPath.moveTo(halfWidth - hourValues[0], halfHeight - hourValues[1])
         hourPath.lineTo(hourRadius + halfWidth, halfHeight - hourValues[2])
         hourPath.lineTo(hourRadius + halfWidth, halfHeight + hourValues[2])
         hourPath.lineTo(halfWidth - hourValues[0], halfHeight + hourValues[1])
@@ -356,6 +357,18 @@ class ClockView @JvmOverloads constructor(
 
     }
 
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        //super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+
+        val width = max(minimumWidth + paddingLeft + paddingRight, pxFromDp(250))
+        val height = max(minimumHeight + paddingTop + paddingBottom, pxFromDp(250))
+
+        setMeasuredDimension(
+            resolveSize(width, widthMeasureSpec),
+            resolveSize(height, heightMeasureSpec)
+        )
+    }
+
     private fun Canvas.drawTextCentred(
         text: String,
         cx: Float,
@@ -365,5 +378,13 @@ class ClockView @JvmOverloads constructor(
         val textBounds = Rect()
         paint.getTextBounds(text, 0, text.length, textBounds)
         drawText(text, cx - textBounds.exactCenterX(), cy - textBounds.exactCenterY(), paint)
+    }
+
+    private fun dpFromPx(px: Int): Int {
+        return (px / context.resources.displayMetrics.density).toInt()
+    }
+
+    private fun pxFromDp(dp: Int): Int {
+        return (dp * context.resources.displayMetrics.density).toInt()
     }
 }
