@@ -315,7 +315,12 @@ class ClockView @JvmOverloads constructor(
 
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
 
-        canvas.withRotation((hourHand * 30f) - 90f, halfWidth, halfHeight) {
+        var hourExtra = minuteHand / 12
+        if (hourExtra == 5) {
+            hourExtra = 0
+        }
+
+        canvas.withRotation(((hourHand * 30f) + (hourExtra * 6f)) - 90f, halfWidth, halfHeight) {
             canvas.drawPath(hourPath, hourPaint)
         }
 
