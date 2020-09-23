@@ -3,4 +3,4 @@
 ![Image of MyClock](MyClock.PNG)
 
 ## Release
-[Download Here](release/myClock.apk)
+[Download Here](release/myClock.apk?raw=true)
