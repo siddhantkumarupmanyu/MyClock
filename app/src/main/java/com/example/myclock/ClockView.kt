@@ -1,7 +1,11 @@
 package com.example.myclock
 
+import android.annotation.TargetApi
 import android.content.Context
 import android.graphics.*
+import android.media.AudioAttributes
+import android.media.SoundPool
+import android.os.Build
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.withStyledAttributes
@@ -70,6 +74,10 @@ class ClockView @JvmOverloads constructor(
 
     private lateinit var extraCanvas: Canvas
     private lateinit var extraBitmap: Bitmap
+
+    private var soundPool: SoundPool? = null
+    private var clockTickSoundId = 0
+    private var shouldPlaySound = false
 
 
     private lateinit var secondTimer: Timer
@@ -269,6 +277,7 @@ class ClockView @JvmOverloads constructor(
                     }
                 }
                 postInvalidate()
+                playClockTickSound()
             }
         }
     }
@@ -372,6 +381,51 @@ class ClockView @JvmOverloads constructor(
             resolveSize(width, widthMeasureSpec),
             resolveSize(height, heightMeasureSpec)
         )
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+
+        createSoundPool()
+        soundPoolLoadSound()
+    }
+
+    private fun soundPoolLoadSound() {
+        clockTickSoundId = soundPool!!.load(context, R.raw.tick, 1)
+    }
+
+    private fun playClockTickSound() {
+        if (shouldPlaySound) {
+            soundPool!!.play(clockTickSoundId, 1f, 1f, 1, 0, 1f)
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun createSoundPool() {
+        val attributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        soundPool = SoundPool.Builder()
+            .setAudioAttributes(attributes)
+            .build()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+
+        releaseSoundPool()
+    }
+
+    private fun releaseSoundPool() {
+        soundPool?.release()
+        soundPool = null
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) { // temporary solution
+        super.onWindowFocusChanged(hasWindowFocus)
+
+        shouldPlaySound = hasWindowFocus
     }
 
     private fun Canvas.drawTextCentred(
